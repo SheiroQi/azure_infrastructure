@@ -2,7 +2,7 @@ terraform {
   required_providers {
     azurerm = { source = "hashicorp/azurerm", version = "~> 3.0" }
   }
-  
+
   # [Backend] 状态存储 (Layer 0)
   # 这里已经填好了你刚才提供的 Storage Account Name
   backend "azurerm" {
@@ -50,13 +50,13 @@ module "app_server" {
   subnet_id           = azurerm_subnet.main_subnet.id
 
   # [传导 2] 透传变量 (用户定)
-  location            = var.location
-  env                 = var.env
-  vm_size             = var.vm_size
-  enable_monitoring   = var.enable_monitoring
+  location          = var.location
+  env               = var.env
+  vm_size           = var.vm_size
+  enable_monitoring = var.enable_monitoring
 
   # [传导 3] 隐形决策 (架构师定)
-  vm_name_suffix      = "web-01"
+  vm_name_suffix = "web-01"
 }
 
 output "vm_ip" {
@@ -81,6 +81,6 @@ resource "azurerm_virtual_network" "legacy_vnet" {
   location            = "eastus"
   resource_group_name = azurerm_resource_group.legacy_rg.name
   address_space       = ["192.168.0.0/16"]
-  
+
   # 注意：这里故意没写 subnet，一会儿 plan 的时候观察提示
 }
