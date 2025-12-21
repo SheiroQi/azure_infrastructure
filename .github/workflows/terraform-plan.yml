@@ -42,14 +42,16 @@ jobs:
           terraform_version: 1.5.0 # 锁定版本 (Rule 4: Determinism)
 
       # Step 4: 初始化 (下载插件)
+      # Step 4: 初始化 (下载插件)
       - name: Terraform Init
         id: init
-        # 注意：这里需要配置 backend 访问权限，因为 Runner 是空的
-        # 既然我们之前的 backend 在 Azure Storage，SP 必须有权访问 Storage
         env:
-          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }} # (通常 Azure Login 会自动处理，这里先尝试简化版)
+          # P7 修正: 显式注入所有 Service Principal 凭证
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: terraform init
-
       # Step 5: 格式检查 (P7 Quality Gate)
       # 如果格式乱了，直接报错，不允许脏代码入库
       - name: Terraform Format
