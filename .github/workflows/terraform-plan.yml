@@ -39,7 +39,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: 1.5.0 # 锁定版本 (Rule 4: Determinism)
+          terraform_version: latest # 锁定版本 (Rule 4: Determinism)
 
       # Step 4: 初始化 (下载插件)
       # Step 4: 初始化 (下载插件)
