@@ -1,0 +1,25 @@
+# 1. [Security] 绝对禁止上传状态文件 (State contains sensitive data)
+*.tfstate
+*.tfstate.*
+
+# 2. [Security] 绝对禁止上传密钥文件 (Secrets)
+*.pem
+id_rsa*
+my_azure_key*
+
+# 3. [Security] 敏感变量文件 (User specific or secrets)
+# 我们通常只上传 example.tfvars，不上传真实的 dev.tfvars (特别是如果里面有密码)
+# 但在这个实验里，dev.tfvars 只有非敏感配置，暂时可以保留。
+# 为了演示标准做法，我们先把它忽略，稍后创建一个模板文件。
+*.tfvars
+!example.tfvars
+
+# 4. [System] 忽略 Terraform 下载的庞大插件库
+.terraform/
+.terraform.lock.hcl  # 这个文件有时候需要上传(锁定版本)，但在初期实验可以忽略
+
+# 5. [System] 崩溃日志
+crash.log
+
+# 6. [OS] 系统垃圾文件
+.DS_Store
