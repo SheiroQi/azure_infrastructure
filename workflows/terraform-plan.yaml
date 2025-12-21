@@ -1,0 +1,68 @@
+name: Terraform Plan
+
+# Trigger: 什么时候触发？(Rule 4: Event Driven)
+# 当 main 分支有 push 动作，或者有 Pull Request 时触发
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+# 权限配置 (P7 Best Practice)
+permissions:
+  contents: read
+
+jobs:
+  terraform-plan:
+    name: "Terraform Plan"
+    runs-on: ubuntu-latest # 使用 GitHub 提供的最新 Ubuntu Runner
+
+    # 环境变量注入
+    env:
+      # 告诉 Terraform 它是自动化的，不要弹窗问 yes/no
+      TF_IN_AUTOMATION: "true" 
+
+    steps:
+      # Step 1: 把代码从仓库拉到 Runner 里
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Step 2: 登录 Azure (使用刚才配的 Secret)
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Step 3: 安装 Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0 # 锁定版本 (Rule 4: Determinism)
+
+      # Step 4: 初始化 (下载插件)
+      - name: Terraform Init
+        id: init
+        # 注意：这里需要配置 backend 访问权限，因为 Runner 是空的
+        # 既然我们之前的 backend 在 Azure Storage，SP 必须有权访问 Storage
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }} # (通常 Azure Login 会自动处理，这里先尝试简化版)
+        run: terraform init
+
+      # Step 5: 格式检查 (P7 Quality Gate)
+      # 如果格式乱了，直接报错，不允许脏代码入库
+      - name: Terraform Format
+        id: fmt
+        run: terraform fmt -check
+
+      # Step 6: 验证逻辑 (Validate)
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate
+
+      # Step 7: 预演 (Plan)
+      # 只读操作，不修改云端资源
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -no-color
