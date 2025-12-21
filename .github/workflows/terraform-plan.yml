@@ -28,7 +28,8 @@ jobs:
       # Step 1: 把代码从仓库拉到 Runner 里
       - name: Checkout Code
         uses: actions/checkout@v3
-
+      - name: Restore SSH Key File
+        run: echo "${{ secrets.AZURE_SSH_KEY }}" > my_azure_key.pub
       # Step 2: 登录 Azure (使用刚才配的 Secret)
       - name: Azure Login
         uses: azure/login@v1
