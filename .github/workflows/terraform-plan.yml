@@ -64,8 +64,13 @@ jobs:
         id: validate
         run: terraform validate
 
-      # Step 7: 预演 (Plan)
-      # 只读操作，不修改云端资源
+# Step 7: 预演 (Plan)
       - name: Terraform Plan
         id: plan
+        # P7 关键技巧：通过环境变量注入所有缺失的参数
+        # 对应你的 variables.tf 里那三个没有 default 的变量
+        env:
+          TF_VAR_env: "Dev"                      # 对应 variable "env"
+          TF_VAR_vm_size: "Standard_D2s_v3"      # 对应 variable "vm_size"
+          TF_VAR_enable_monitoring: false        # 对应 variable "enable_monitoring"
         run: terraform plan -no-color
