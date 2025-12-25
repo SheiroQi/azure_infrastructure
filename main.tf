@@ -32,6 +32,10 @@ resource "azurerm_virtual_network" "main_vnet" {
   location            = var.location
   resource_group_name = data.azurerm_resource_group.rg.name
   address_space       = ["10.0.0.0/16"]
+  tags = {
+    Environment = "Production"
+    Owner       = "Sheiro"
+  }
 }
 
 resource "azurerm_subnet" "main_subnet" {

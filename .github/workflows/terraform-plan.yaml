@@ -1,0 +1,107 @@
+name: Terraform CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  # 全局变量 (跟昨天一样)
+  TF_IN_AUTOMATION: "true"
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  # 设置 working-directory，方便后面复用
+  TF_WORKING_DIR: "." 
+
+jobs:
+  # Job 1: 永远执行 Plan (不管是 PR 还是 Merge)
+  plan:
+    name: "Terraform Plan"
+    runs-on: ubuntu-latest
+    outputs:
+      # 导出 Plan 的退出码，虽然后面不一定用，但这是好习惯
+      plan_exitcode: ${{ steps.plan.outputs.exitcode }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 复原 SSH Key (跟昨天一样)
+      - name: Restore SSH Key
+        run: echo "${{ secrets.AZURE_SSH_KEY }}" > my_azure_key.pub
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: latest
+          # 关键点：开启 Wrapper 才能获取 stdout/stderr
+          terraform_wrapper: true 
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Format
+        run: terraform fmt -check
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        id: plan
+        # 即使 Plan 有变更也不要报错退出，我们需要后续步骤判断
+        continue-on-error: true 
+        env:
+          TF_VAR_env: "Prod"
+          TF_VAR_vm_size: "Standard_D2s_v3"
+          TF_VAR_enable_monitoring: false
+        # -input=false 防止卡死
+        run: terraform plan -input=false -no-color
+
+  # Job 2: Apply (只有在 Push 到 main 时才执行)
+  apply:
+    name: "Terraform Apply"
+    needs: plan  # 依赖关系：必须等 Plan 跑完且成功
+    # 逻辑闸门：只有是 main 分支的 Push 事件才执行 Apply
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: Production  # 绑定我们刚才创建的“人工审批环境”
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Restore SSH Key
+        run: echo "${{ secrets.AZURE_SSH_KEY }}" > my_azure_key.pub
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: latest
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        env:
+          TF_VAR_env: "Prod"
+          TF_VAR_vm_size: "Standard_D2s_v3"
+          TF_VAR_enable_monitoring: false
+        # 关键参数：-auto-approve
+        # 因为前面已经有人工审批了，所以这里让机器人自动确认
+        run: terraform apply -auto-approve -input=false
